@@ -650,7 +650,8 @@ class DDPG(OffPolicyRLModel):
         :return: (float, float) critic loss, actor loss
         """
         # Get a batch
-        obs, actions, rewards, next_obs, terminals = self.replay_buffer.sample(batch_size=self.batch_size)
+        obs, actions, rewards, next_obs, terminals = self.replay_buffer.sample(batch_size=self.batch_size,
+                                                                               env=self._vec_normalize_env)
         # Reshape to match previous behavior and placeholder shape
         rewards = rewards.reshape(-1, 1)
         terminals = terminals.reshape(-1, 1)
@@ -832,6 +833,9 @@ class DDPG(OffPolicyRLModel):
                 # Prepare everything.
                 self._reset()
                 obs = self.env.reset()
+                # Retrieve unnormalized observation for saving into the buffer
+                if self._vec_normalize_env is not None:
+                    obs_ = self._vec_normalize_env.get_original_obs().squeeze()
                 eval_obs = None
                 if self.eval_env is not None:
                     eval_obs = self.eval_env.reset()
@@ -909,9 +913,21 @@ class DDPG(OffPolicyRLModel):
                             # Book-keeping.
                             epoch_actions.append(action)
                             epoch_qs.append(q_value)
-                            self._store_transition(obs, action, reward, new_obs, done)
-                            obs = new_obs
 
+                            # Store only the unnormalized version
+                            if self._vec_normalize_env is not None:
+                                new_obs_ = self._vec_normalize_env.get_original_obs().squeeze()
+                                reward_ = self._vec_normalize_env.get_original_reward().squeeze()
+                            else:
+                                # Avoid changing the original ones
+                                obs_, new_obs_, reward_ = obs, new_obs, reward
+
+                            self._store_transition(obs_, action, reward_, new_obs_, done)
+                            obs = new_obs
+                            # Save the unnormalized observation
+                            if self._vec_normalize_env is not None:
+                                obs_ = new_obs_
+                                
                             if done:
                                 # Episode done.
                                 epoch_episode_rewards.append(episode_reward)
