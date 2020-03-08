@@ -239,12 +239,12 @@ class DQN(OffPolicyRLModel):
                     obs_ = new_obs_
 
                 if writer is not None:
-                    ep_rew = np.array([rew]).reshape((1, -1))
+                    ep_rew = np.array([reward_]).reshape((1, -1))
                     ep_done = np.array([done]).reshape((1, -1))
                     tf_util.total_episode_reward_logger(self.episode_reward, ep_rew, ep_done, writer,
                                                         self.num_timesteps)
 
-                episode_rewards[-1] += rew
+                episode_rewards[-1] += reward_
                 if done:
                     maybe_is_success = info.get('is_success')
                     if maybe_is_success is not None:

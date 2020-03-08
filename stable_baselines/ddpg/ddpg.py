@@ -736,7 +736,8 @@ class DDPG(OffPolicyRLModel):
         if self.stats_sample is None:
             # Get a sample and keep that fixed for all further computations.
             # This allows us to estimate the change in value for the same set of inputs.
-            obs, actions, rewards, next_obs, terminals = self.replay_buffer.sample(batch_size=self.batch_size)
+            obs, actions, rewards, next_obs, terminals = self.replay_buffer.sample(batch_size=self.batch_size,
+                                                                                   env=self._vec_normalize_env)
             self.stats_sample = {
                 'obs': obs,
                 'actions': actions,
@@ -778,7 +779,7 @@ class DDPG(OffPolicyRLModel):
             return 0.
 
         # Perturb a separate copy of the policy to adjust the scale for the next "real" perturbation.
-        obs, *_ = self.replay_buffer.sample(batch_size=self.batch_size)
+        obs, *_ = self.replay_buffer.sample(batch_size=self.batch_size, env=self._vec_normalize_env)
         self.sess.run(self.perturb_adaptive_policy_ops, feed_dict={
             self.param_noise_stddev: self.param_noise.current_stddev,
         })
@@ -898,17 +899,10 @@ class DDPG(OffPolicyRLModel):
                                 callback.on_training_end()
                                 return self
 
-                            if writer is not None:
-                                ep_rew = np.array([reward]).reshape((1, -1))
-                                ep_done = np.array([done]).reshape((1, -1))
-                                tf_util.total_episode_reward_logger(self.episode_reward, ep_rew, ep_done,
-                                                                    writer, self.num_timesteps)
                             step += 1
                             total_steps += 1
                             if rank == 0 and self.render:
                                 self.env.render()
-                            episode_reward += reward
-                            episode_step += 1
 
                             # Book-keeping.
                             epoch_actions.append(action)
@@ -927,7 +921,16 @@ class DDPG(OffPolicyRLModel):
                             # Save the unnormalized observation
                             if self._vec_normalize_env is not None:
                                 obs_ = new_obs_
-                                
+
+                            episode_reward += reward_
+                            episode_step += 1
+
+                            if writer is not None:
+                                ep_rew = np.array([reward_]).reshape((1, -1))
+                                ep_done = np.array([done]).reshape((1, -1))
+                                tf_util.total_episode_reward_logger(self.episode_reward, ep_rew, ep_done,
+                                                                    writer, self.num_timesteps)
+
                             if done:
                                 # Episode done.
                                 epoch_episode_rewards.append(episode_reward)

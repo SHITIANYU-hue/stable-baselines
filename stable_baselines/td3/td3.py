@@ -359,7 +359,7 @@ class TD3(OffPolicyRLModel):
 
                 if writer is not None:
                     # Write reward per episode to tensorboard
-                    ep_reward = np.array([reward]).reshape((1, -1))
+                    ep_reward = np.array([reward_]).reshape((1, -1))
                     ep_done = np.array([done]).reshape((1, -1))
                     tf_util.total_episode_reward_logger(self.episode_reward, ep_reward,
                                                         ep_done, writer, self.num_timesteps)
@@ -392,7 +392,7 @@ class TD3(OffPolicyRLModel):
                     callback.on_rollout_start()
 
 
-                episode_rewards[-1] += reward
+                episode_rewards[-1] += reward_
                 if done:
                     if self.action_noise is not None:
                         self.action_noise.reset()
